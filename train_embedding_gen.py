@@ -4,7 +4,7 @@ import argparse
 from tqdm import tqdm
 import torch
 
-# loading the .npy file
+#arguments
 def parse_args():
     parser = argparse.ArgumentParser(description="Generate responses using BERT embedding and store in .npy file.")
     parser.add_argument('--input_file', required=True, help='Path to the input .npy file')
@@ -12,7 +12,7 @@ def parse_args():
     return parser.parse_args()
 args = parse_args()
 
-# load the .npy file
+#loading the .npy file
 file_path = args.input_file
 data = np.load(file_path, allow_pickle=True)
 
@@ -46,21 +46,53 @@ generation_config = {
 model = genai.GenerativeModel(model_name="gemini-pro", generation_config=generation_config, safety_settings=safety_settings)
 
 #loading BERT model and tokenizer
-tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-bert_model = BertModel.from_pretrained('bert-base-uncased').to('cuda')
+tokenizer = BertTokenizer.from_pretrained('bert-large-uncased')
+bert_model = BertModel.from_pretrained('bert-large-uncased').to('cuda')
 
 print("\nLoaded Gemini and BERT model and tokenizer")
 
-#template
+#sentence puzzle template
 template = """
-You are presented with a question based on a sentence-play puzzle. It means that the question is a sentence-type brain teaser where the puzzle defying commonsense is centered on sentence snippets. Given below is the question, choices and the correct option number and choice. 
-You need to provide the reasoning for why the option is correct.\nQuestion: {}\nChoices:\n{}\nCorrect Option: Option {} : {}"""
+### CONTEXT
+We are presented with a question based on a sentence-play puzzle. It means that the question is a sentence-type brain teaser where the puzzle defying commonsense is centered on sentence snippets. 
 
-print("\nStarting generation of responses...")
+### OBJECTIVE
+We have provided you below with the question, the answer choices and the correct option number and choice. 
+We have also provided you with what the distractor choice was. This distractor was aimed to throw you off the correct answer.
+You need to provide the reasoning for why the option is correct.
+Question: {}
+Choices:\n{}
+Correct Option: Option {} : {}
+Distractor Choice: {}
 
-# Create a new list to store filtered entries
+### RESPONSE
+Provide the reasoning for why the given correct option is correct and what should be taken care of so that the distractor choice is not chosen.
+
+### REASONING
+"""
+
+#word puzzle template
+template = """
+### CONTEXT
+We are presented with a question based on a word-play puzzle. It means that the question is a brain teaser where the answer violates the default meaning of the word and focuses on the letter composition of the target question. 
+
+### OBJECTIVE
+We have provided you below with the question, the answer choices and the correct option number and choice. 
+We have also provided you with what the distractor choice was. This distractor was aimed to throw you off the correct answer.
+You need to provide the reasoning for why the option is correct.
+Question: {}
+Choices:\n{}
+Correct Option: Option {} : {}
+Distractor Choice: {}
+
+### RESPONSE
+Provide the reasoning for why the given correct option is correct and what should be taken care of so that the distractor choice is not chosen.
+
+### REASONING
+"""
+
+print("Storing Embeddings and Responses...\n")
 filtered_data = []
-
 # iterate through entries and format them with tqdm
 for entry in tqdm(data, desc="Generating responses", unit=" entry"):
     question = entry['question']
@@ -68,18 +100,19 @@ for entry in tqdm(data, desc="Generating responses", unit=" entry"):
     label = entry['label']
     correct_option = label + 1
     answer = entry['answer']
-    # format the choices with options and newline characters
+    distractor = entry['distractor1']
+    #format the choices with options and newline characters
     formatted_choices = '\n'.join([f"Option {i}: {choice}" for i, choice in enumerate(choices, start=1)])
-    # format the entry using the template
-    formatted_entry = template.format(question, formatted_choices, correct_option, answer)
+    #format the entry using the template
+    formatted_entry = template.format(question, formatted_choices, correct_option, answer, distractor)
 
     try:
-        # generate Gemini model response
+        #generate Gemini model response
         response = model.generate_content(formatted_entry)
-        # storing Gemini response as a new entry in the data
+        #storing Gemini response as a new entry in the data
         entry['reason'] = response.text
     except Exception as e:
-        # If an exception occurs during Gemini response generation, skip this entry
+        #skip entry
         print(f"Exception occurred for entry:\n{formatted_entry}\nError: {e}")
         continue
 
@@ -89,13 +122,13 @@ for entry in tqdm(data, desc="Generating responses", unit=" entry"):
     embedding = output.last_hidden_state.mean(dim=1).squeeze().cpu().numpy()
     entry['embedding'] = embedding.tolist()
 
-    # Add the entry to the filtered data
+    #add the entry to the filtered data
     filtered_data.append(entry)
 
-# Convert the filtered data to a new NumPy array
+#convert the filtered data to a new NumPy array
 filtered_data_np = np.array(filtered_data)
 
-# store the data in a new .npy file
+#store the data in a new .npy file
 output_file_path = args.output_file
 np.save(output_file_path, filtered_data_np, allow_pickle=True)
 
