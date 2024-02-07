@@ -20,33 +20,9 @@ data = np.load(file_path, allow_pickle=True)
 
 # template
 template = """
-Welcome to the sentence-play puzzle challenge! Here, you will be presented with a question based on a sentence-play puzzle. It means that the question is a sentence-type brain teaser where the puzzle-defying commonsense is centred on sentence snippets.
-We have given you four examples below to help you understand the puzzle challenge better. To help you understand better, along with the correct option for the example, we have also provided you with the reason for why the option is correct.
+Welcome to the word-play puzzle challenge! Here, you will be presented with a question based on a word-play puzzle. It means that the question is a brain teaser where the answer violates the default meaning of the word and focuses on the letter composition of the target question.
+We have given you an example below to help you understand the puzzle challenge better. To help you understand better, along with the correct option for the example, we have also provided you with the reason for why the option is correct.
 Example 1:
-Question: {}
-Choices:\n{}
-Correct Option: {}
-Reason for the correct option: {}
-
-Example 2:
-Question: {}
-Choices:\n{}
-Correct Option: {}
-Reason for the correct option: {}
-
-Example 3:
-Question: {}
-Choices:\n{}
-Correct Option: {}
-Reason for the correct option: {}
-
-Example 4:
-Question: {}
-Choices:\n{}
-Correct Option: {}
-Reason for the correct option: {}
-
-Example 5:
 Question: {}
 Choices:\n{}
 Correct Option: {}
@@ -64,51 +40,20 @@ formatted_data = []
 for entry in tqdm(data, desc="Formatting Entries", unit="entry"):
     question = entry['question']
     choices = entry['choice_list']
-    #t1
-    t1_question = entry['closest_train_data1']['question']
-    t1_choices = entry['closest_train_data1']['choice_list']
-    t1_label = entry['closest_train_data1']['label']
+    t1_question = data[0]['closest_train_data1']['question']
+    t1_choices = data[0]['closest_train_data1']['choice_list']
+    t1_label = data[0]['closest_train_data1']['label']
     t1_label += 1 #to make it 1-indexed
-    t1_reason = entry['closest_train_data1']['reason']
-    #t2
-    t2_question = entry['closest_train_data2']['question']
-    t2_choices = entry['closest_train_data2']['choice_list']
-    t2_label = entry['closest_train_data2']['label']
-    t2_label += 1 #to make it 1-indexed
-    t2_reason = entry['closest_train_data2']['reason']
-    #t3
-    t3_question = entry['closest_train_data3']['question']
-    t3_choices = entry['closest_train_data3']['choice_list']
-    t3_label = entry['closest_train_data3']['label']
-    t3_label += 1 #to make it 1-indexed
-    t3_reason = entry['closest_train_data3']['reason']
-    #t4
-    t4_question = entry['closest_train_data4']['question']
-    t4_choices = entry['closest_train_data4']['choice_list']
-    t4_label = entry['closest_train_data4']['label']
-    t4_label += 1 #to make it 1-indexed
-    t4_reason = entry['closest_train_data4']['reason']
-    #t5
-    t5_question = entry['closest_train_data5']['question']
-    t5_choices = entry['closest_train_data5']['choice_list']
-    t5_label = entry['closest_train_data5']['label']
-    t5_label += 1 #to make it 1-indexed
-    t5_reason = entry['closest_train_data5']['reason']
+    t1_reason = data[0]['closest_train_data1']['reason']
     # format the choices with options and newline characters
     formatted_choices = '\n'.join([f"Option {i}: {choice}" for i, choice in enumerate(choices, start=1)])
     formatted_t1_choices = '\n'.join([f"Option {i}: {choice}" for i, choice in enumerate(t1_choices, start=1)])
-    formatted_t2_choices = '\n'.join([f"Option {i}: {choice}" for i, choice in enumerate(t2_choices, start=1)])
-    formatted_t3_choices = '\n'.join([f"Option {i}: {choice}" for i, choice in enumerate(t3_choices, start=1)])
-    formatted_t4_choices = '\n'.join([f"Option {i}: {choice}" for i, choice in enumerate(t4_choices, start=1)])
-    formatted_t5_choices = '\n'.join([f"Option {i}: {choice}" for i, choice in enumerate(t5_choices, start=1)])
     # format the entry using the template
-    formatted_entry = template.format(t1_question, formatted_t1_choices, t1_label, t1_reason, t2_question, formatted_t2_choices, t2_label, t2_reason \
-                                        ,t3_question, formatted_t3_choices, t3_label, t3_reason, t4_question, formatted_t4_choices, t4_label, t4_reason \
-                                        ,t5_question, formatted_t5_choices, t5_label, t5_reason, question, formatted_choices)
+    formatted_entry = template.format(t1_question, formatted_t1_choices, t1_label, t1_reason, question, formatted_choices)
     # append the formatted entry to the list
     formatted_data.append(formatted_entry)
 
-print("Data Loading Complete\n")
+print("Phase 1 Complete\n")
 # initialize the generative model
 import google.generativeai as genai
 genai.configure(api_key="AIzaSyBu3mT8ni1L07S3Jm0YFIduJRISf-rThvs")
@@ -137,7 +82,7 @@ generation_config = {
     "max_output_tokens": 2048,
 }
 model = genai.GenerativeModel(model_name="gemini-pro", generation_config=generation_config, safety_settings=safety_settings)
-print("Model Loading Completed\n")
+print("Phase 2 Complete\n")
 # list to store input and output for CSV
 output_data = []
 
